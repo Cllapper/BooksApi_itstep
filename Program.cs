@@ -1,22 +1,26 @@
-using Microsoft.AspNetCore.Localization;
-using System.Globalization;
-
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+// Додавання сервісів до контейнера.
+builder.Services.AddControllers();
 
-builder.Services.AddControllers()
-    .AddDataAnnotationsLocalization(options =>
-    {
-        options.DataAnnotationLocalizerProvider = (type, factory) =>
-            factory.Create(typeof(BooksApi.Resources.ValidationMessages));
-    });
+// === 1. РЕЄСТРАЦІЯ СЕРВІСІВ КЕШУВАННЯ ===
 
+// Реєструємо сервіс для кешування в пам'яті (In-Memory Caching), доступний через IMemoryCache
+builder.Services.AddMemoryCache();
+
+// Реєструємо сервіс для кешування відповідей (Response Caching), який використовує атрибут [ResponseCache]
+builder.Services.AddResponseCaching();
+
+
+// === КІНЕЦЬ ЗМІН У СЕРВІСАХ ===
+
+// Сервіси для Swagger/OpenAPI (залиште як є для зручності тестування)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// Налаштування конвеєра HTTP-запитів.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -25,21 +29,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var supportedCultures = new[]
-{
-    new CultureInfo("uk-UA")
-};
+// === 2. ПІДКЛЮЧЕННЯ MIDDLEWARE ДЛЯ КЕШУВАННЯ ===
 
-app.UseRequestLocalization(new RequestLocalizationOptions
-{
-    DefaultRequestCulture = new RequestCulture("uk-UA"),
-    SupportedCultures = supportedCultures,
-    SupportedUICultures = supportedCultures
-});
+// Middleware для кешування відповідей.
+// Він має бути розміщений перед middleware, відповіді яких ми хочемо кешувати (напр., MapControllers)
+app.UseResponseCaching();
+
+
+// === КІНЕЦЬ ЗМІН У MIDDLEWARE ===
 
 
 app.MapControllers();
 
 app.Run();
-
-public partial class Program { }
